@@ -8,7 +8,7 @@
 import Cocoa
 
 class PowerToolViewController: NSViewController, NSWindowDelegate {
-
+    
     @IBOutlet weak var cpuFreqGraph: CPUPowerStepView!
     
     var timer : Timer?
@@ -62,9 +62,9 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
     @IBOutlet weak var asaBox: NSButton!
     @IBAction func onASA(_ sender: Any) {
         ProcessorModel.shared.setPPM(enabled: asaBox.state == .on)
-
+        
         overviewSpeedShift.setOptions(newOptions: nil, selection: asaBox.state == .on ? -1 : 0)
-
+        
         updateASA()
     }
     
@@ -90,7 +90,7 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
             let mainStoryboard = NSStoryboard.init(name: NSStoryboard.Name("Main"), bundle: nil)
             let controller = mainStoryboard.instantiateController(withIdentifier: NSStoryboard.SceneIdentifier("AMDPowerTool")) as! NSWindowController
             controller.showWindow(self)
-
+            
             controller.window?.isMovableByWindowBackground = true
             
             if forceFocus {controller.window?.orderFrontRegardless()}
@@ -105,18 +105,21 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
         super.viewDidLoad()
         vaildStatesClock = ProcessorModel.shared.getVaildPStateClocks()
         cpuFreqGraph.setup(totalCores: ProcessorModel.shared.getNumOfCore())
-
+        
         sampleCPUGraph()
-
+        
         timer = Timer.scheduledTimer(withTimeInterval: updateTime, repeats: true, block: { (_) in
             self.sampleCPUGraph()
         })
-
+        
         setupOverview()
-
+        
         updatePStateDef()
         updateCPB()
         updateASA()
+        
+        let timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(reinitTimer), userInfo: nil, repeats: true)
+        reinitTimer();
         
         topLabel1.font = NSFont(name: "SF Pro Rounded", size: 32)
         topLabel2.font = NSFont(name: "SF Pro Rounded", size: 32)
@@ -140,7 +143,7 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
         timer?.invalidate()
     }
     
-
+    
     
     func windowWillClose(_ notification: Notification) {
         PowerToolViewController.activeSelf = nil
@@ -155,15 +158,15 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
         
         cpuFreqGraph.setFreqData(data: Array(metric[3...metric.count-1]),
                                  states: vaildStatesClock, load: load)
-
+        
         freqMax = max(freqMax, freqs.max()!)
         instDelta += a.reduce(0, +)
-
+        
         if sumCount >= Int(1 / updateTime) {
             
             topLabel1.stringValue = String(format: "%.1f Ghz", freqMax * 0.001)
             topLabel2.stringValue = suffixNumber(number: NSNumber(value: instDelta))
-
+            
             sumCount = 0
             freqMax = 0
             instDelta = 0
@@ -188,7 +191,7 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
         if let rs = ProcessorModel.shared.systemConfig["rs"] {
             storageGB = "\(Int(rs)! / 1024)"
         }
-         
+        
         basicLabel.stringValue = """
         \(ProcessorModel.shared.systemConfig["cpu"]!)
         Family: \(String(format:"%02X", id[0]))h, Model: \(String(format:"%02X", id[1]))h
@@ -248,7 +251,7 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
     func suffixNumber(number:NSNumber) -> String {
         var num:Double = number.doubleValue
         let sign = ((num < 0) ? "-" : "" )
-
+        
         num = fabs(num)
         if (num < 1000.0){
             return "\(sign)\(num)"
@@ -256,7 +259,18 @@ class PowerToolViewController: NSViewController, NSWindowDelegate {
         let exp:Int = Int(log10(num) / 3.0 )
         let units:[String] = ["K","M","G","T","P","E"]
         let roundedNum:Double = round(10 * num / pow(1000.0,Double(exp))) / 10
-
+        
         return "\(sign)\(roundedNum)\(units[exp-1])"
     }
+    
+    @objc func reinitTimer() {
+        if (cpbEnabledBox.state == NSControl.StateValue.off){
+            ProcessorModel.shared.setCPB(enabled: false);
+        } else if (cpbEnabledBox.state == NSControl.StateValue.on){
+            ProcessorModel.shared.setCPB(enabled: true);
+        }
+    }
 }
+/*
+
+*/
